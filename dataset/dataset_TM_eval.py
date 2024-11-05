@@ -68,6 +68,8 @@ class Text2MotionDataset(data.Dataset):
             for line in f.readlines():
                 id_list.append(line.strip())
 
+        # print(id_list)
+
         new_name_list = []
         length_list = []
         for name in tqdm(id_list):
@@ -120,7 +122,9 @@ class Text2MotionDataset(data.Dataset):
             except Exception as e:
                 # print(e)
                 pass
-
+        
+        # print("new_name_list:", new_name_list)
+        # print("length_list:", length_list)
         name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
         self.mean = mean
         self.std = std
@@ -150,11 +154,24 @@ class Text2MotionDataset(data.Dataset):
         name = self.name_list[idx]
         data = self.data_dict[name]
         # data = self.data_dict[self.name_list[idx]]
+        # 从 data 中提取出运动序列 motion，运动长度 m_length，以及包含文本信息的 text_list
         motion, m_length, text_list = data['motion'], data['length'], data['text']
         # Randomly select a caption
+        # 随机从 text_list 中选择一个文本数据 text_data，提取其中的 caption（文本描述）和 tokens（单词列表）
         text_data = random.choice(text_list)
+        # caption就是纯文本，token就是那个词后面跟着一个词性的文本
+        # humanml3d的数据是这样的
         caption, tokens = text_data['caption'], text_data['tokens']
 
+        '''
+        如果 tokens 长度小于 self.max_text_len：
+	    tokens = ['sos/OTHER'] + tokens + ['eos/OTHER']：在 tokens 前后分别加上起始符 sos/OTHER 和结束符 eos/OTHER。
+	    tokens = tokens + ['unk/OTHER'] * (self.max_text_len + 2 - sent_len)：对 tokens 进行补齐，使用 'unk/OTHER' 填充到固定的最大长度。
+	    否则，如果 tokens 超过最大长度：
+	    tokens = tokens[:self.max_text_len]：截断 tokens 到最大长度。
+	    tokens = ['sos/OTHER'] + tokens + ['eos/OTHER']：同样在前后加上 sos/OTHER 和 eos/OTHER 标记。
+	    sent_len 记录处理后的 tokens 长度。
+        '''
         if len(tokens) < self.max_text_len:
             # pad with "unk"
             tokens = ['sos/OTHER'] + tokens + ['eos/OTHER']
@@ -168,7 +185,9 @@ class Text2MotionDataset(data.Dataset):
         pos_one_hots = []
         word_embeddings = []
         for token in tokens:
+            # 对每个 token，使用 w_vectorizer 获取其词嵌入 word_emb 和位置 one-hot 编码 pos_oh
             word_emb, pos_oh = self.w_vectorizer[token]
+            # 存入列表
             pos_one_hots.append(pos_oh[None, :])
             word_embeddings.append(word_emb[None, :])
         pos_one_hots = np.concatenate(pos_one_hots, axis=0)
@@ -190,6 +209,7 @@ class Text2MotionDataset(data.Dataset):
         motion = (motion - self.mean) / self.std
 
         if m_length < self.max_motion_length and self.shuffle:
+            # 填补长度
             motion = np.concatenate([motion,
                                      np.zeros((self.max_motion_length - m_length, motion.shape[1]))
                                      ], axis=0)
@@ -202,7 +222,8 @@ class Text2MotionDataset(data.Dataset):
 def DATALoader(dataset_name, is_test,
                 batch_size, w_vectorizer,
                 num_workers = 8, unit_length = 4, shuffle=True) : 
-    
+    # DataLoader 是一个用于批量加载数据的工具。每次迭代 DataLoader 会返回一个批次的数据，通常是 Dataset 类定义的单个数据样本的批量组合。
+    # DataLoader 的输出内容取决于自定义的 Dataset 类中 __getitem__ 方法的返回内容
     val_loader = torch.utils.data.DataLoader(Text2MotionDataset(dataset_name, is_test, w_vectorizer, unit_length=unit_length, shuffle=shuffle),
                                               batch_size,
                                               shuffle = shuffle,

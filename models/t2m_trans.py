@@ -580,7 +580,6 @@ class CrossCondTransBase(nn.Module):
 
         return x
 
-
 class CrossCondTransHead(nn.Module):
 
     def __init__(self, 

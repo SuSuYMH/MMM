@@ -165,8 +165,12 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
     return best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger
 
 
-@torch.no_grad()        
+@torch.no_grad()      
 def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, clip_model, eval_wrapper, dataname='t2m', draw = True, save = True, savegif=False, num_repeat=1, rand_pos=False, CFG=-1) : 
+    '''
+    定义了一个名为 evaluation_transformer 的函数，用于对生成运动序列的 Transformer 模型在验证集上进行评估。
+    它计算各种指标（如 FID、Diversity、R-precision 等），记录在 TensorBoard 中，选择并保存最佳模型
+    '''     
     if num_repeat < 0:
         is_avg_all = True
         num_repeat = -num_repeat
@@ -193,16 +197,27 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
     nb_sample = 0
     blank_id = get_model(trans).num_vq
     for batch in tqdm(val_loader):
+        '''
+        clip_text:纯文本
+        token：没用到
+        name：没用到
+        sent_len：句子长度
+        pose：就是motion（已经进行填充，填充到了相同的长度）
+        m_length：实际的motion长度
+        '''
         word_embeddings, pos_one_hots, clip_text, sent_len, pose, m_length, token, name = batch
 
+        # batchsize和motion长度（填补的统一长度）
         bs, seq = pose.shape[:2]
         num_joints = 21 if pose.shape[-1] == 251 else 22
         
+        # 分词,获得文本中每个词元的词典编号
         text = clip.tokenize(clip_text, truncate=True).cuda()
-
+        # 整体向量，每个词元的向量
         feat_clip_text, word_emb = clip_model(text)
         
         motion_multimodality_batch = []
+        # motion的token的个数，下采样为4
         m_tokens_len = torch.ceil((m_length)/4)
 
          
@@ -214,6 +229,7 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
             pred_pose_eval = torch.zeros((bs, seq, pose.shape[-1])).cuda()
             # pred_len = torch.ones(bs).long()
 
+            # trans是训练好的transformer模型，index_motion是生成的motion的token？
             index_motion = trans(feat_clip_text, word_emb, type="sample", m_length=pred_len, rand_pos=rand_pos, CFG=CFG)
             # [INFO] 1. this get the last index of blank_id
             # pred_length = (index_motion == blank_id).int().argmax(1).float()
@@ -236,6 +252,7 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
             ######################################################
             
             ######### [INFO] Eval by m_length
+                # 经过motion vqvae的decoder进行解码，得到pred_pose
                 pred_pose = net(index_motion[k:k+1, :int(pred_tok_len[k].item())], type='decode')
                 pred_pose_eval[k:k+1, :int(pred_len[k].item())] = pred_pose
             et_pred, em_pred = eval_wrapper.get_co_embeddings(word_embeddings, pos_one_hots, sent_len, pred_pose_eval, m_length)
@@ -274,8 +291,12 @@ def evaluation_transformer(out_dir, val_loader, net, trans, logger, writer, nb_i
     gt_mu, gt_cov  = calculate_activation_statistics(motion_annotation_np)
     mu, cov= calculate_activation_statistics(motion_pred_np)
 
+    #  calculate_diversity 函数中的 activation 数组包含 inf（无穷大）或 NaN（非数字）值，这导致 scipy.linalg.norm 无法计算
     diversity_real = calculate_diversity(motion_annotation_np, 300 if nb_sample > 300 else 100)
     diversity = calculate_diversity(motion_pred_np, 300 if nb_sample > 300 else 100)
+    # 有问题就先别算了昂
+    # diversity_real = 100
+    # diversity = 100
 
     R_precision_real = R_precision_real / nb_sample
     R_precision = R_precision / nb_sample

@@ -16,16 +16,17 @@ def collate_fn(batch):
 
 
 '''For use of training text-2-motion generative model'''
+# 继承自torch.utils.data.Dataset
 class Text2MotionDataset(data.Dataset):
     def __init__(self, dataset_name, feat_bias = 5, unit_length = 4, codebook_size = 1024, tokenizer_name=None, up_low_sep=False):
-        
         self.max_length = 64
         self.pointer = 0
         self.dataset_name = dataset_name
         self.up_low_sep = up_low_sep
-
+        # 每个 token 表示的帧数。用于确定一个动作序列编码为多少个 token
         self.unit_length = unit_length
         # self.mot_start_idx = codebook_size
+        # mot_end_idx 和 mot_pad_idx：分别表示动作序列的结束标记和填充标记的索引。
         self.mot_end_idx = codebook_size
         self.mot_pad_idx = codebook_size + 1 # [TODO] I think 513 (codebook_size+1) can be what ever, it will be croped out
         if dataset_name == 't2m':
@@ -51,7 +52,7 @@ class Text2MotionDataset(data.Dataset):
 
         split_file = pjoin(self.data_root, 'train.txt')
 
-
+        # id_list：从 train.txt 文件中读取训练集的 ID 列表，每个 ID 对应一个样本
         id_list = []
         with cs.open(split_file, 'r') as f:
             for line in f.readlines():
@@ -105,7 +106,9 @@ class Text2MotionDataset(data.Dataset):
                     new_name_list.append(name)
             except:
                 pass
+        # data_dict：保存每个样本的动作 token 和文本描述。
         self.data_dict = data_dict
+        # new_name_list：存储所有样本的名称（包括新生成的带有时间范围的名称）
         self.name_list = new_name_list
 
     def __len__(self):

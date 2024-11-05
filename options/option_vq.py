@@ -18,7 +18,7 @@ def get_args_parser():
     parser.add_argument('--gamma', default=0.05, type=float, help="learning rate decay")
 
     parser.add_argument('--weight-decay', default=0.0, type=float, help='weight decay')
-    parser.add_argument("--commit", type=float, default=0.02, help="hyper-parameter for the commitment loss")
+    parser.add_argument("--commit", type=float, default=0.02, help="hyper-parameter for the commitment loss") #这个是那个loss前面的系数
     parser.add_argument('--loss-vel', type=float, default=0.5, help='hyper-parameter for the velocity loss')
     parser.add_argument('--recons-loss', type=str, default='l1_smooth', help='reconstruction loss')
     
@@ -36,7 +36,7 @@ def get_args_parser():
     parser.add_argument('--vq-norm', type=str, default=None, help='dataset directory')
     
     ## quantizer
-    parser.add_argument("--quantizer", type=str, default='ema_reset', choices = ['ema', 'orig', 'ema_reset', 'reset'], help="eps for optimal transport")
+    parser.add_argument("--quantizer", type=str, default='ema_reset_l2', choices = ['ema', 'orig', 'ema_reset', 'reset','ema_reset_l2'], help="eps for optimal transport")
     parser.add_argument('--beta', type=float, default=1.0, help='commitment loss in standard VQ')
 
     ## resume

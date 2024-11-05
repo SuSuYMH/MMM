@@ -42,7 +42,7 @@ writer = SummaryWriter(args.out_dir)
 logger.info(json.dumps(vars(args), indent=4, sort_keys=True))
 
 
-
+# 词表
 w_vectorizer = WordVectorizer('./glove', 'our_vab')
 
 if args.dataname == 'kit' : 
@@ -127,6 +127,7 @@ for nb_iter in tqdm(range(1, args.warm_up_iter)):
     gt_motion = gt_motion.cuda().float() # (bs, 64, dim)
 
     pred_motion, loss_commit, perplexity = net(gt_motion)
+    # 重建motion
     loss_motion = Loss(pred_motion, gt_motion)
     loss_vel = Loss.forward_joint(pred_motion, gt_motion)
     
@@ -192,3 +193,4 @@ for nb_iter in tqdm(range(1, args.total_iter + 1)):
     if nb_iter % args.eval_iter==0 :
         best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper=eval_wrapper)
         
+    # writer.add_graph(net, gt_motion)
