@@ -1,5 +1,4 @@
-rsync -avP \
-    --exclude '__pycache__/' \
+tar --exclude '__pycache__/' \
     --exclude '*.py[cod]' \
     --exclude './output/*' \
     --exclude 'checkpoints' \
@@ -7,4 +6,7 @@ rsync -avP \
     --exclude 'dataset/HumanML3D' \
     --exclude 'dataset/KIT-ML' \
     --exclude 'output' \
-    -e "ssh" A100:/data_ssd2/ymh/MMM /Users/su/Master-Project/MMM
+    -czvf MMM.tar.gz 
+
+# 要到MMM的上一级目录
+tar --exclude='dataset/HumanML3D' --exclude='output' --exclude='checkpoints' -czvf MMM.tar.gz MMM
