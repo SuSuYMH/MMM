@@ -92,7 +92,7 @@ else:
     net = vqvae.HumanVQVAE(args, ## use args to define different parameters in different quantizers
                         args.nb_code,
                         args.code_dim,
-                        args.output_emb_width,
+                        args.output_emb_width,# 屁用没有
                         args.down_t,
                         args.stride_t,
                         args.width,

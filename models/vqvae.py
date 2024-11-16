@@ -1,6 +1,6 @@
 import torch.nn as nn
 from models.encdec import Encoder, Decoder
-from models.quantize_cnn import QuantizeEMAReset, Quantizer, QuantizeEMA, QuantizeReset, QuantizeEMAResetL2
+from models.quantize_cnn import QuantizeEMAReset, Quantizer, QuantizeEMA, QuantizeReset, QuantizeEMAResetL2, QuantizeLFQ
 from models.t2m_trans import Decoder_Transformer, Encoder_Transformer
 from exit.utils import generate_src_mask
 
@@ -62,6 +62,8 @@ class VQVAE_251(nn.Module):
             self.quantizer = QuantizeEMA(nb_code, code_dim, args)
         elif args.quantizer == "reset":
             self.quantizer = QuantizeReset(nb_code, code_dim, args)
+        elif args.quantizer == "lfq":
+            self.quantizer = QuantizeLFQ(nb_code, code_dim)
 
 
     def preprocess(self, x):
@@ -92,7 +94,7 @@ class VQVAE_251(nn.Module):
     def forward(self, x):
         # 完整的传播过程
         x_in = self.preprocess(x) #x_in.shape: torch.Size([256, 263, 64]) motion的长度为64
-        print('x_in.shape:', x_in.shape)
+        # print('x_in.shape:', x_in.shape)
 
 
         # Encode
@@ -108,15 +110,15 @@ class VQVAE_251(nn.Module):
         # x_encoder = x_encoder.reshape(x_in.shape[0], -1, int(x_in.shape[2]/4))
         
         x_encoder = self.encoder(x_in)# x_encoder.shape: torch.Size([256, 32, 16]) 把64降采样为16个token，每个token的dim是32
-        print('x_encoder.shape:', x_encoder.shape)
+        # print('x_encoder.shape:', x_encoder.shape)
         
         ## quantization
         x_quantized, loss, perplexity  = self.quantizer(x_encoder)# x_quantized.shape: torch.Size([256, 32, 16])
-        print('x_quantized.shape:', x_quantized.shape)
+        # print('x_quantized.shape:', x_quantized.shape)
 
         ## decoder
         x_decoder = self.decoder(x_quantized)# x_decoder.shape: torch.Size([256, 263, 64])
-        print('x_decoder.shape:', x_decoder.shape)
+        # print('x_decoder.shape:', x_decoder.shape)
         x_out = self.postprocess(x_decoder)
         return x_out, loss, perplexity
 
