@@ -978,5 +978,5 @@ class QuantizeLFQ(nn.Module):
         # print(per_sample_entropy)
         # print(codebook_entropy)
 
-        return quantized, commit_loss+entropy_aux_loss, perplexity
+        return quantized, commit_loss+0.1*entropy_aux_loss, perplexity
         # return ret, LossBreakdown(per_sample_entropy, codebook_entropy, commit_loss, avg_probs)

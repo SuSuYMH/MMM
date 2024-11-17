@@ -60,6 +60,7 @@ eval_wrapper = EvaluatorModelWrapper(wrapper_opt)
 
 
 ##### ---- Dataloader ---- #####
+# 注意train和eval用到的dataset的实现是不一样的，要看他们的细节来判断每个batch都是什么东西
 train_loader = dataset_VQ.DATALoader(args.dataname,
                                         args.batch_size,
                                         window_size=args.window_size,
@@ -192,5 +193,5 @@ for nb_iter in tqdm(range(1, args.total_iter + 1)):
 
     if nb_iter % args.eval_iter==0 :
         best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, writer, logger = eval_trans.evaluation_vqvae(args.out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper=eval_wrapper)
-        
+        # 参数为：输出路径、val的数据、VQVAE网络、logger、writer、当前多少step、...各个最好的指标...、eval_wrapper
     # writer.add_graph(net, gt_motion)

@@ -63,6 +63,8 @@ class EvaluatorModelWrapper(object):
     # Please note that the results does not following the order of inputs
     def get_co_embeddings(self, word_embs, pos_ohot, cap_lens, motions, m_lens):
         with torch.no_grad():
+            # 将输入的数据移动到指定的设备（如 GPU）并转换为浮点类型（float）。
+            # 使用 detach() 从计算图中分离数据，防止梯度传播，表明这些输入数据不会进行梯度更新。
             word_embs = word_embs.detach().to(self.device).float()
             pos_ohot = pos_ohot.detach().to(self.device).float()
             motions = motions.detach().to(self.device).float()
@@ -74,6 +76,7 @@ class EvaluatorModelWrapper(object):
 
             '''Text Encoding'''
             text_embedding = self.text_encoder(word_embs, pos_ohot, cap_lens)
+        # 返回这两个embedding？干嘛的？（应该是用来计算哪些指标的，分别ground truth的embedding和VQVAE重建出来的motion的embedding，然后计算指标？）
         return text_embedding, motion_embedding
 
     # Please note that the results does not following the order of inputs

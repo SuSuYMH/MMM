@@ -20,8 +20,28 @@ def tensorborad_add_video_xyz(writer, xyz, nb_iter, tag, nb_vis=4, title_batch=N
     writer.add_video(tag, plot_xyz, nb_iter, fps = 20)
 
 @torch.no_grad()        
-def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid, best_iter, best_div, best_top1, best_top2, best_top3, best_matching, eval_wrapper, draw = True, save = True, savegif=False, savenpy=False) : 
-    net.eval()
+def evaluation_vqvae(
+    out_dir, 
+    val_loader, 
+    net, logger, 
+    writer, 
+    nb_iter, 
+    best_fid, 
+    best_iter, 
+    best_div, 
+    best_top1, 
+    best_top2, 
+    best_top3, 
+    best_matching, 
+    eval_wrapper, 
+    draw = True, 
+    save = True, 
+    savegif=False, 
+    savenpy=False) : 
+    '''
+    # 参数为：输出路径、val的数据、VQVAE网络、logger、writer、当前多少step、...各个最好的指标...、eval_wrapper
+    '''
+    net.eval()# 改为eval模式
     nb_sample = 0
     
     draw_org = []
@@ -35,25 +55,31 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
     R_precision_real = 0
     R_precision = 0
 
-    nb_sample = 0
+    nb_sample = 0 # 总的样本数量（写两遍是什么意思？就这水平？
     matching_score_real = 0
     matching_score_pred = 0
     for batch in val_loader:
+        # text的embedding、text的onehot、没用、text实际长度（因为被填充了）、motion、motion实际长度（现在长度也是被填充的）
         word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, token, name = batch
 
         motion = motion.cuda()
+        # 返回GROUNDTRUTH的text的embedding和motion的embedding
         et, em = eval_wrapper.get_co_embeddings(word_embeddings, pos_one_hots, sent_len, motion, m_length)
+        # 获得batchize和motion sequence长度
         bs, seq = motion.shape[0], motion.shape[1]
 
         num_joints = 21 if motion.shape[-1] == 251 else 22
         
+        # 和motion一样大小的全零tensor，用于存储经过VQVAE后得到的重建motion
         pred_pose_eval = torch.zeros((bs, seq, motion.shape[-1])).cuda()
 
         for i in range(bs):
             pose = val_loader.dataset.inv_transform(motion[i:i+1, :m_length[i], :].detach().cpu().numpy())
             # pose_xyz = recover_from_ric(torch.from_numpy(pose).float().cuda(), num_joints)
 
-
+            '''
+            用当前batchsize中的第i个motion（而且截断成了实际长度），去经过VQVAE，重新获得一个预测的motion
+            '''
             pred_pose, loss_commit, perplexity = net(motion[i:i+1, :m_length[i]])
             # pred_denorm = val_loader.dataset.inv_transform(pred_pose.detach().cpu().numpy())
             # pred_xyz = recover_from_ric(torch.from_numpy(pred_denorm).float().cuda(), num_joints)
@@ -61,7 +87,9 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
             # if savenpy:
             #     np.save(os.path.join(out_dir, name[i]+'_gt.npy'), pose_xyz[:, :m_length[i]].cpu().numpy())
             #     np.save(os.path.join(out_dir, name[i]+'_pred.npy'), pred_xyz.detach().cpu().numpy())
-
+            '''
+            赋值，方便后续使用
+            '''
             pred_pose_eval[i:i+1,:m_length[i],:] = pred_pose
 
             # if i < min(4, bs):
@@ -69,8 +97,10 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
             #     draw_pred.append(pred_xyz)
             #     draw_text.append(caption[i])
 
+        # 返回预测的text的embedding和motion的embedding
         et_pred, em_pred = eval_wrapper.get_co_embeddings(word_embeddings, pos_one_hots, sent_len, pred_pose_eval, m_length)
 
+        # 把当前batch的真motion embedding和重建motion embedding存起来
         motion_pred_list.append(em_pred)
         motion_annotation_list.append(em)
             
@@ -81,11 +111,15 @@ def evaluation_vqvae(out_dir, val_loader, net, logger, writer, nb_iter, best_fid
         R_precision += temp_R
         matching_score_pred += temp_match
 
+        # 累计总的样本数量
         nb_sample += bs
 
+    # 把list叠起来
     motion_annotation_np = torch.cat(motion_annotation_list, dim=0).cpu().numpy()
     motion_pred_np = torch.cat(motion_pred_list, dim=0).cpu().numpy()
+    # 计算ground truth的motion的均值和方差
     gt_mu, gt_cov  = calculate_activation_statistics(motion_annotation_np)
+    # 计算VQVAE预测的motion的均值和方差
     mu, cov= calculate_activation_statistics(motion_pred_np)
 
     diversity_real = calculate_diversity(motion_annotation_np, 300 if nb_sample > 300 else 100)

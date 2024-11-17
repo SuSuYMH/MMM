@@ -9,4 +9,4 @@ tar --exclude '__pycache__/' \
     -czvf MMM.tar.gz 
 
 # 要到MMM的上一级目录
-tar --exclude='dataset/HumanML3D' --exclude='output' --exclude='checkpoints' -czvf MMM.tar.gz MMM
+tar --exclude='dataset/HumanML3D' --exclude='output' --exclude='checkpoints' --exclude='qwen' -czvf MMM-11.17.tar.gz MMM
